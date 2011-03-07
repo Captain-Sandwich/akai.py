@@ -3,6 +3,7 @@
 
 import subprocess as sp
 import sys,time,os
+from functools import reduce
 
 """
 class akai():
@@ -125,7 +126,7 @@ port = 'hw:1,0,0'
 
 def convert_nibbles(nibbles):
    it = iter(nibbles)
-   l = zip(it, it)
+   l = list(zip(it, it))
    l2 = []
    for i in l:
        l2.append( ''.join([i[1][1],i[0][1]]) ) #führende Null raushauen und bytes in die richtige Reihenfolge bringen
@@ -244,15 +245,15 @@ def handlefile(path,number):
         if i in alph:
             lst.append(i)
     name = ''.join(lst)
-    print 'converting',f
+    print('converting',f)
     sp.call(['sox',path,'-t','.sds','-r','44100','-b','16','-D','-c','1',filename+'.sds'])
     #sp.call(['2sds',filename])
     #sp.call(['sendsds',filename[:-4]+'.sds'])
-    print 'sending',filename+'.sds','over sysex'
+    print('sending',filename+'.sds','over sysex')
     sp.call(['amidi','-p','hw:1,0,0','-s',filename+'.sds'])
     time.sleep(1)
     sp.call(['rm',filename+'.sds'])
-    print 'renaming sample to', name
+    print('renaming sample to', name)
     renamesample(number,name)
     time.sleep(1)
 
@@ -261,7 +262,7 @@ def dump_plist():
     num = int(data[5],16) #number of resident programs
     index = 7 #ab dem 8ten byte kommen die namen
     for i in range(num):
-        print i, akai_to_str(data[index:index+12])
+        print(i, akai_to_str(data[index:index+12]))
         index = index+12
 
 def dump_slist():
@@ -269,7 +270,7 @@ def dump_slist():
     num = int(data[5],16) #number of resident programs
     index = 7 #ab dem 8ten byte kommen die namen
     for i in range(num):
-        print i, akai_to_str(data[index:index+12])
+        print(i, akai_to_str(data[index:index+12]))
         index = index+12
     
 def sampleinfo(number):
@@ -286,7 +287,7 @@ def sampleinfo(number):
             sample['samplerate'] = 22050
         sample['name'] = akai_to_str(data[4:16])
     except:
-        print 'Sample',number,'does not exist'
+        print('Sample',number,'does not exist')
     return data,sample
 
 
@@ -298,7 +299,7 @@ def request(reqstring):
 
 def send(s):
     sp.call(['amidi','-p',port,'-S',s])
-    print s
+    print(s)
 
 if __name__ == '__main__':
     a = 1
