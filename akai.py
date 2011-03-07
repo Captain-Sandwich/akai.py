@@ -133,6 +133,14 @@ def convert_nibbles(nibbles):
        l2.append( ''.join([i[1][1],i[0][1]]) ) #führende Null raushauen und bytes in die richtige Reihenfolge bringen
    return l2
 
+def convert_bytes(b):
+    l = []
+    for i in b:
+        l.append('0'+i[1])
+        l.append('0'+i[0])
+    l = ' '.join(l)
+    return l
+
 def signed_int(string):
     a = BitArray(hex=string)
     return a.int
@@ -281,37 +289,46 @@ def sampleinfo(number):
     data = data[5:-1] # strip sysex header and eox
     data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
     sample = {}
-    try:
-        sample['number'] = int(data[0],16)
-        sample['pitch'] = num_to_pitch( int(data[3],16) )
-        if toInt(data[2]) == 1:
-            sample['samplerate'] = 44100
-        else:
-            sample['samplerate'] = 22050
-        sample['name'] = akai_to_str(data[4:16])
-        sample['loops'] = toInt(data[17])
-        if toInt(data[20]) == 0:
-            sample['loop_mode'] = 'lp in release'
-        elif toInt(data[20]) == 1:
-            sample['loop_mode'] = 'lp to release'
-        elif toInt(data[20]) == 2:
-            sample['loop_mode'] = 'no looping'
-        elif toInt(data[20]) == 3:
-            sample['loop_mode'] = 'one-shot'
-        sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21])) #cent detune geht noch nicht TODO
-        sample['words'] = int(''.join(data[26:30]),16)
-    except:
-        print('Sample',number,'does not exist')
+    #try:
+    sample['number'] = int(data[0],16)
+    sample['pitch'] = num_to_pitch( int(data[3],16) )
+    if toInt(data[2]) == 1:
+        sample['samplerate'] = 44100
+    else:
+        sample['samplerate'] = 22050
+    sample['name'] = akai_to_str(data[4:16])
+    sample['loops'] = toInt(data[17])
+    sample['start'] = toInt(data[33]+data[32]+data[31])
+    sample['end'] = toInt(data[37]+data[36]+data[35])
+    if toInt(data[20]) == 0:
+        sample['loop_mode'] = 'lp in release'
+    elif toInt(data[20]) == 1:
+        sample['loop_mode'] = 'lp to release'
+    elif toInt(data[20]) == 2:
+        sample['loop_mode'] = 'no looping'
+    elif toInt(data[20]) == 3:
+        sample['loop_mode'] = 'one-shot'
+    sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21])) #cent detune geht noch nicht TODO
+    for i in range(sample['loops']):
+        offset = (i)*12
+        i = i+1
+        sample['loop'+str(i)+'_start'] = toInt(data[41+offset]+data[40+offset]+data[39+offset])
+        sample['loop'+str(i)+'_length'] = toInt(data[47+offset]+data[46+offset]+data[45+offset])
+        sample['loop'+str(i)+'_time'] = toInt(data[50+offset]+data[49+offset])
+   # except:
+    #    print('Sample',number,'does not exist')
     return data,sample
 
 
 def request(reqstring):
     p = sp.Popen(['amidi','-p',port,'-d','-t','1'],stdout=sp.PIPE) #prepare dump, one second timeout
     send(reqstring) #request program list
-    data = str(p.stdout.readlines()[1])
+    data = p.stdout.readlines()[1].decode()
     return data
 
 def send(s):
+    if type(s) == list:
+        s = ' '.join(s)
     sp.call(['amidi','-p',port,'-S',s])
     #print(s)
 
