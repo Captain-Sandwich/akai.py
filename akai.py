@@ -298,7 +298,8 @@ def sampleinfo(number):
             sample['loop_mode'] = 'no looping'
         elif toInt(data[20]) == 3:
             sample['loop_mode'] = 'one-shot'
-        sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21]))
+        sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21])) #cent detune geht noch nicht TODO
+        sample['words'] = int(''.join(data[26:30]),16)
     except:
         print('Sample',number,'does not exist')
     return data,sample
@@ -312,7 +313,7 @@ def request(reqstring):
 
 def send(s):
     sp.call(['amidi','-p',port,'-S',s])
-    print(s)
+    #print(s)
 
 if __name__ == '__main__':
     a = 1
