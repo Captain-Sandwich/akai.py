@@ -4,6 +4,7 @@
 import subprocess as sp
 import sys,time,os
 from functools import reduce
+from bitstring import BitArray
 
 """
 class akai():
@@ -132,7 +133,9 @@ def convert_nibbles(nibbles):
        l2.append( ''.join([i[1][1],i[0][1]]) ) #führende Null raushauen und bytes in die richtige Reihenfolge bringen
    return l2
 
-
+def signed_int(string):
+    a = BitArray(hex=string)
+    return a.int
 
 def toInt(s):
     return int(s.replace(' ',''),16)
@@ -286,6 +289,16 @@ def sampleinfo(number):
         else:
             sample['samplerate'] = 22050
         sample['name'] = akai_to_str(data[4:16])
+        sample['loops'] = toInt(data[17])
+        if toInt(data[20]) == 0:
+            sample['loop_mode'] = 'lp in release'
+        elif toInt(data[20]) == 1:
+            sample['loop_mode'] = 'lp to release'
+        elif toInt(data[20]) == 2:
+            sample['loop_mode'] = 'no looping'
+        elif toInt(data[20]) == 3:
+            sample['loop_mode'] = 'one-shot'
+        sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21]))
     except:
         print('Sample',number,'does not exist')
     return data,sample
@@ -294,7 +307,7 @@ def sampleinfo(number):
 def request(reqstring):
     p = sp.Popen(['amidi','-p',port,'-d','-t','1'],stdout=sp.PIPE) #prepare dump, one second timeout
     send(reqstring) #request program list
-    data = p.stdout.readlines()[1]
+    data = str(p.stdout.readlines()[1])
     return data
 
 def send(s):
