@@ -1,129 +1,22 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 # -'- encoding=utf-8 -*-
 
 import subprocess as sp
 import sys,time,os
+import bitstring
 from functools import reduce
-from bitstring import BitArray
-
-"""
-class akai():
-    def __init__(self):
-        self.port = self.getport()
-        self.programs=[]
-        self.samples=[]
-        
-        self.version = ''
-        self.maxblocks = 0
-        self.freeblocks = 0
-        self.maxwords = 0
-        self.freewords = 0
-        self.sysexchannel = 0
-
-    def getstatus(self):
-        data = self.request('F0 47 00 00 48 F7')
-
-
-
-
-    def getport(self):
-        p = sp.Popen(['amidi','-l'],stdout=sp.PIPE)
-        out = p.stdout.readlines()
-        m = ''
-        port = ''
-        for line in out:
-            if line.find('hw') != -1:
-                if line.find('USB Midi Cable') != -1:
-                    port = line.split()[1]
-                    m = line[4:-1]
-                elif line.find('Keystation') != -1 and not port:
-                    port = line.split()[1]
-                    m = line[4:-1]
-        print 'Using port',m
-        return port
-
-    def deletesample(self,number):
-        lst =  ['F0 47 00 14 48',numberstring(number), 'F7']
-        self.send(' '.join(lst))
-
-    def deleteprogram(self,number):
-        lst =  ['F0 47 00 12 48',numberstring(number), 'F7']
-        self.send(' '.join(lst))
-
-    def renamesample(self,number,name):
-        lst = ['F0 47 00 2C 48',numberstring(number),'03 00 0C 00', str_to_akai(name), 'F7']
-        self.send(' '.join(lst))
-
-    def renameprogram(number,name):
-        lst = ['F0 47 00 28 48', numberstring(number),'03 00 0C 00', str_to_akai(name), 'F7']
-        self.send(' '.join(lst))
-
-    def handlefile(self,path,number):
-        d,f = os.path.split(path)
-        filename, ext = os.path.splitext(f)
-        lst = []
-        for i in filename.upper():
-            if i in alph:
-                lst.append(i)
-        name = ''.join(lst)
-        print 'converting',f
-        sp.call(['sox',path,'-t','.sds','-r','44100','-b','16','-D','-c','1',filename+'.sds'])
-        #sp.call(['2sds',filename])
-        #sp.call(['sendsds',filename[:-4]+'.sds'])
-        print 'sending',filename+'.sds','over sysex'
-        sp.call(['amidi','-p','hw:1,0,0','-s',filename+'.sds'])
-        time.sleep(1)
-        sp.call(['rm',filename+'.sds'])
-        print 'renaming sample to', name
-        renamesample(number,name)
-        time.sleep(1)
-
-
-    def dump_plist(self):
-        data = self.request('F0 47 00 02 48 F7').split()#format: f0,47,cc,PLIST,48,pp,pp, NAMES, f7
-        num = int(data[5],16) #number of resident programs
-        index = 7 #ab dem 8ten byte kommen die namen
-        programs = []
-        for i in range(num):
-            print i, akai_to_str(data[index:index+12])
-            programs.append(akai_to_str(data[index:index+12]))
-            index = index+12
-        return programs
-
-    def dump_slist(self):
-        data = self.request('F0 47 00 04 48 F7').split()#format: f0,47,cc,PLIST,48,pp,pp, NAMES, f7
-        num = int(data[5],16) #number of resident programs
-        index = 7 #ab dem 8ten byte kommen die namen
-        for i in range(num):
-            print i, akai_to_str(data[index:index+12])
-            index = index+12
-
-    def dump_pdata(self,number):
-        data = self.request('F0 47 00 06 48 '+numberstring(number)+' F7').split()
-        print data
-        name = data[39:51]
-        print number
-        self.programs[number] = akai_to_str(name)
-
-    def request(self,reqstring):
-        p = sp.Popen(['amidi','-p',port,'-d','-t','1'],stdout=sp.PIPE) #prepare dump, one second timeout
-        self.send(reqstring) #request program list
-        data = p.stdout.readlines()
-        return data
-
-    def send(self,s):
-        sp.call(['amidi','-p',port,'-S',s])
-        print s
-"""
-
-
-
 
 #erstmal ein paar Hilfsfunktionen:
 
 port = ''
 port = 'hw:1,0,0'
 
+def switch_endian(byte):
+    if type(byte) == str:
+        byte = byte.split()
+    a = list(byte)
+    a.reverse()
+    return a
 
 def convert_nibbles(nibbles):
    it = iter(nibbles)
@@ -142,30 +35,22 @@ def convert_bytes(b):
     return l
 
 def signed_int(string):
-    a = BitArray(hex=string)
+    a = bitstring.BitArray(hex=string)
     return a.int
 
 def toInt(s):
+    if type(s) == list:
+        return int(''.join(s),16)
     return int(s.replace(' ',''),16)
 
-def toHex(s): # String nach Hex
-    lst = []
-    for ch in s.upper():
-        hv = hex(ord(ch)).replace('0x', '')
-        if len(hv) == 1:
-            hv = '0'+hv
-        lst.append(hv)
-    
-    return reduce(lambda x,y:x+y, lst)
-
-def inthex(i):
+def toHex(i):
     return hex(i).replace('0x','')
 
 def reverse(s):
     return ''.join(reversed(s)) 
 
 def numberstring(number):
-    numeral = inthex(number).upper()
+    numeral = toHex(number).upper()
     numeral = reverse(numeral).ljust(3,'0')
     lst = []
     for i in numeral:
@@ -209,7 +94,7 @@ def str_to_akai(s):
     s = s.ljust(12,' ')
     for i in s.upper():
         num = alph.index(i)
-        num = inthex(num).upper()
+        num = toHex(num).upper()
         num = reverse(num).ljust(2,'0')
         for j in num:
             lst.append(j.rjust(2,'0'))
@@ -256,15 +141,15 @@ def handlefile(path,number):
         if i in alph:
             lst.append(i)
     name = ''.join(lst)
-    print('converting',f)
+    print(('converting',f))
     sp.call(['sox',path,'-t','.sds','-r','44100','-b','16','-D','-c','1',filename+'.sds'])
     #sp.call(['2sds',filename])
     #sp.call(['sendsds',filename[:-4]+'.sds'])
-    print('sending',filename+'.sds','over sysex')
+    print(('sending',filename+'.sds','over sysex'))
     sp.call(['amidi','-p','hw:1,0,0','-s',filename+'.sds'])
     time.sleep(1)
     sp.call(['rm',filename+'.sds'])
-    print('renaming sample to', name)
+    print(('renaming sample to', name))
     renamesample(number,name)
     time.sleep(1)
 
@@ -273,7 +158,7 @@ def dump_plist():
     num = int(data[5],16) #number of resident programs
     index = 7 #ab dem 8ten byte kommen die namen
     for i in range(num):
-        print(i, akai_to_str(data[index:index+12]))
+        print((i, akai_to_str(data[index:index+12])))
         index = index+12
 
 def dump_slist():
@@ -281,9 +166,9 @@ def dump_slist():
     num = int(data[5],16) #number of resident programs
     index = 7 #ab dem 8ten byte kommen die namen
     for i in range(num):
-        print(i, akai_to_str(data[index:index+12]))
+        print((i, akai_to_str(data[index:index+12])))
         index = index+12
-    
+   
 def sampleinfo(number):
     data = request('F0 47 00 0A 48 '+numberstring(number)+' F7').split()
     data = data[5:-1] # strip sysex header and eox
@@ -291,15 +176,15 @@ def sampleinfo(number):
     sample = {}
     #try:
     sample['number'] = int(data[0],16)
-    sample['pitch'] = num_to_pitch( int(data[3],16) )
+    sample['pitch'] = num_to_pitch( toInt(data[3]) )
     if toInt(data[2]) == 1:
         sample['samplerate'] = 44100
     else:
         sample['samplerate'] = 22050
     sample['name'] = akai_to_str(data[4:16])
     sample['loops'] = toInt(data[17])
-    sample['start'] = toInt(data[33]+data[32]+data[31])
-    sample['end'] = toInt(data[37]+data[36]+data[35])
+    sample['start'] = toInt(switch_endian(data[31:34]))
+    sample['end'] = toInt(switch_endian(data[35:38]))
     if toInt(data[20]) == 0:
         sample['loop_mode'] = 'lp in release'
     elif toInt(data[20]) == 1:
@@ -318,6 +203,27 @@ def sampleinfo(number):
    # except:
     #    print('Sample',number,'does not exist')
     return data,sample
+
+def programinfo(number):
+    data = request('F0 47 00 06 48 '+numberstring(number)+' F7').split()
+    data = data[5:-1] # strip sysex header and eox
+    data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
+    program = {}
+    program['first_kg'] = toInt(switch_endian(data[2:4]))
+    program['name'] = akai_to_str(data[4:16])
+    program['midi_program_no'] = toInt(data[16])
+    program['midi_channel'] = toInt(data[17])
+    program['polyphony'] = toInt(data[18])
+    program['priority'] = toInt(data[19])
+    program['low_key'] = num_to_pitch(toInt(data[20])) #def: 24 range 24-127
+    program['high_key'] = num_to_pitch(toInt(data[21]))
+    program['octave_shift'] = toInt(data[22]) #-2..2
+    program['aux_out'] = toInt(data[23]) #0-7 255=OFF
+    program['mix_level'] = toInt(data[24]) #0-99
+    program['mix_pan'] = toInt(data[25]) #-50..50
+    program['volume'] = toInt(data[26]) #0-99 def 80
+
+    return program
 
 
 def request(reqstring):
