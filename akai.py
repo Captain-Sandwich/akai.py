@@ -28,6 +28,9 @@ def convert_nibbles(nibbles):
 
 def convert_bytes(b):
     l = []
+    if len(b[0]) < 2:
+        b = list(b)
+        b[0] = '0'+b[0]
     for i in b:
         l.append('0'+i[1])
         l.append('0'+i[0])
@@ -44,12 +47,14 @@ def toInt(s):
     return int(s.replace(' ',''),16)
 
 def toHex(i):
-    return hex(i).replace('0x','')
+    return hex(i).replace('0x','').upper()
 
 def reverse(s):
     return ''.join(reversed(s)) 
 
 def numberstring(number):
+    n = toHex(number)
+    return n+' 00 00'
     numeral = toHex(number).upper()
     numeral = reverse(numeral).ljust(3,'0')
     lst = []
@@ -120,6 +125,7 @@ def getstatus():
 def deletesample(number):
     lst =  ['F0 47 00 14 48',numberstring(number), 'F7']
     send(' '.join(lst))
+    print(' '.join(lst))
 
 def deleteprogram(number):
     lst =  ['F0 47 00 12 48',numberstring(number), 'F7']
@@ -206,6 +212,7 @@ def sampleinfo(number):
 
 def programinfo(number):
     data = request('F0 47 00 06 48 '+numberstring(number)+' F7').split()
+    data2 = list(data)
     data = data[5:-1] # strip sysex header and eox
     data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
     program = {}
@@ -223,8 +230,27 @@ def programinfo(number):
     program['mix_pan'] = toInt(data[25]) #-50..50
     program['volume'] = toInt(data[26]) #0-99 def 80
 
-    return program
+    return data2,program
+#####################
+#   Program Functions
+#####################
+def filter(number,value):
+    '''set filter value for a program. range 0..99'''
+    s = 'F0 47 00 2A 48 %s 00 07 00 01 00 %s F7' #erstes %: program number, zweites: filter value
+    value = convert_bytes([toHex(value)])
+    n = convert_bytes([toHex(number)])
+    s = s % (n,value)
+    send(s)
 
+def resonance(number,value):
+    '''set filter resonance for a program. range -50..50'''
+    s = 'F0 47 00 2A 48 %s 00 15 01 02 00 0%s 00 02 03 F7' #erstes %: program number, zweites: filter value
+    value = toHex(value)
+    n = convert_bytes([toHex(number)])
+    s = s % (n,value)
+    send(s)
+
+################
 
 def request(reqstring):
     p = sp.Popen(['amidi','-p',port,'-d','-t','1'],stdout=sp.PIPE) #prepare dump, one second timeout
@@ -233,6 +259,7 @@ def request(reqstring):
     return data
 
 def send(s):
+    print(s)
     if type(s) == list:
         s = ' '.join(s)
     sp.call(['amidi','-p',port,'-S',s])
