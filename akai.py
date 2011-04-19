@@ -35,7 +35,7 @@ def switch_endian(byte):
     return a
 
 def convert_nibbles(nibbles):
-    '''strips the empty bytes from the sysex string and switches from low-high nybble order to standard high-low nybble order. reverse of convert_bytes'''
+   '''strips the empty bytes from the sysex string and switches from low-high nybble order to standard high-low nybble order. reverse of convert_bytes'''
    it = iter(nibbles)
    l = list(zip(it, it))
    l2 = []
@@ -52,7 +52,6 @@ def convert_bytes(b):
     for i in b:
         l.append('0'+i[1])
         l.append('0'+i[0])
-    l = ' '.join(l)
     return l
 
 def signed_int(string):
@@ -129,6 +128,13 @@ def str_to_akai(s):
             lst.append(j.rjust(2,'0'))
     return ' '.join(lst)
 
+def num_to_akai(number,num_of_blocks):
+    '''converts a number to hex and returns it in akai format, padding to num_of_blocks bytes'''
+    a = toHex(number).rjust(num_of_blocks,'0')
+    a = list(a)
+    a.reverse()
+    a = ['0'+i for i in a]
+    return ' '.join(a)
 
 #Hauptfunktionen:
 #allgemein Sysex: F0 47 00 <function> 48 <bytes> F7
@@ -323,6 +329,48 @@ def resonance(number,value):
     send(s)
     return s
 
+#####################
+#    Sample Functions
+#####################
+def set_pitch(number,note,detune):
+    s = 'F0 47 00 2C 48 %s 02 00 01 00 %s F7'#2bytes midi note number
+    if type(note) == str:
+        pass #TODO: pitch_to_num
+    n = numberstring(number)
+    v = num_to_akai(note,2)
+    s = s % (n,v)
+    send(s)
+    #TODO: detune. muss warten bis signed integer gelesen werden können
+    #now the detune
+    s = 'F0 47 00 2C 48 %s 14 00 02 00 00 00 %s F7'#2nibbles signed semi detune range:-50..50
+    detune = int(detune)
+    v = num_to_akai(detune,2)
+    s = s % (n,v)
+    send(s)
+
+def loop_start(number,value):
+    '''set loop start of sample number number. range depends on sample length'''
+    s = 'F0 47 00 2C 48 %s 26 00 04 00 %s F7'#erstes % number, 2nd % 8nibbles start sample
+    n = numberstring(number)
+    value = num_to_akai(value,8)
+    s = s % (n,value)
+    send(s)
+
+def loop_length(number,value):
+    '''set loop length of sample number number.range depends on loop start'''
+    s = 'F0 47 00 2C 48 %s 2A 00 04 00 00 00 00 00 %s F7'# 4nibbles loop_length
+    n = numberstring(number)
+    value = num_to_akai(value,4)
+    s = s % (n,value)
+    send(s)
+
+def loop_time(number,value):
+    '''set loop time of sample number number.range 0..9999=HOLD'''
+    s = 'F0 47 00 2C 48 %s 30 00 02 00 %s F7' #erstes % sample number, zweites % 4nibbles loop time
+    n = numberstring(number)
+    value = num_to_akai(value,4)
+    s = s % (n,value)
+    send(s)
 ################
 
 def request(reqstring):
