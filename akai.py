@@ -17,7 +17,7 @@ def dec(bytelist):
         bytelist = bytelist.split()
     a = map(toInt,bytelist)
 #    a = map(hex,a)
-    return a
+    return list(a)
 
 def enc(hexvals):
     '''Takes a list of byte values und returns a string representation.'''
@@ -27,6 +27,7 @@ def enc(hexvals):
 
 
 def switch_endian(byte):
+    '''takes a list of bytes and reverses their order for correct endian evaluation'''
     if type(byte) == str:
         byte = byte.split()
     a = list(byte)
@@ -34,6 +35,7 @@ def switch_endian(byte):
     return a
 
 def convert_nibbles(nibbles):
+    '''strips the empty bytes from the sysex string and switches from low-high nybble order to standard high-low nybble order. reverse of convert_bytes'''
    it = iter(nibbles)
    l = list(zip(it, it))
    l2 = []
@@ -42,6 +44,7 @@ def convert_nibbles(nibbles):
    return l2
 
 def convert_bytes(b):
+    '''takes a list of bytes, switches their nybble order to low-high(akai) and adds zero bytes to match the midi format. reverse of convert_nibbles'''
     l = []
     if len(b[0]) < 2:
         b = list(b)
@@ -53,15 +56,18 @@ def convert_bytes(b):
     return l
 
 def signed_int(string):
+    '''returns the int interpretation of a hex string as signed integer'''
     a = bitstring.BitArray(hex=string)
     return a.int
 
 def toInt(s):
+    '''converts a hex string to an integer'''
     if type(s) == list:
         return int(''.join(s),16)
     return int(s.replace(' ',''),16)
 
 def toHex(i):
+    '''converts an integer to a hex string'''
     a = hex(i).replace('0x','').upper()
     if len(a) == 1:
         a = '0'+a
@@ -235,6 +241,44 @@ def sampleinfo(number):
    # except:
     #    print('Sample',number,'does not exist')
     return data,sample
+
+def sampleinfo_raw(number):
+    '''returns info about sample number number'''
+    data = request('F0 47 00 0A 48 '+numberstring(number)+' F7').split()
+    raw = list(data)
+    data = data[5:-1] # strip sysex header and eox
+    data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
+    sample = {}
+    #try:
+    sample['number'] = int(data[0],16)
+    sample['pitch'] = num_to_pitch( toInt(data[3]) )
+    if toInt(data[2]) == 1:
+        sample['samplerate'] = 44100
+    else:
+        sample['samplerate'] = 22050
+    sample['name'] = akai_to_str(data[4:16])
+    sample['loops'] = toInt(data[17])
+    sample['start'] = toInt(switch_endian(data[31:34]))
+    sample['end'] = toInt(switch_endian(data[35:38]))
+    if toInt(data[20]) == 0:
+        sample['loop_mode'] = 'lp in release'
+    elif toInt(data[20]) == 1:
+        sample['loop_mode'] = 'lp to release'
+    elif toInt(data[20]) == 2:
+        sample['loop_mode'] = 'no looping'
+    elif toInt(data[20]) == 3:
+        sample['loop_mode'] = 'one-shot'
+    sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21])) #cent detune geht noch nicht TODO
+    for i in range(sample['loops']):
+        offset = (i)*12
+        i = i+1
+        sample['loop'+str(i)+'_start'] = toInt(data[41+offset]+data[40+offset]+data[39+offset])
+        sample['loop'+str(i)+'_length'] = toInt(data[47+offset]+data[46+offset]+data[45+offset])
+        sample['loop'+str(i)+'_time'] = toInt(data[50+offset]+data[49+offset])
+   # except:
+    #    print('Sample',number,'does not exist')
+    return data,sample,raw
+
 
 def programinfo(number):
     '''returns info about program number number'''
