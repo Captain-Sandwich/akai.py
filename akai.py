@@ -11,6 +11,21 @@ from functools import reduce
 port = ''
 port = 'hw:1,0,0'
 
+def dec(bytelist):
+    '''Takes a list or string of Bytes like 'FF' and returns a list of the integer values'''
+    if type(bytelist) == str:
+        bytelist = bytelist.split()
+    a = map(toInt,bytelist)
+#    a = map(hex,a)
+    return a
+
+def enc(hexvals):
+    '''Takes a list of byte values und returns a string representation.'''
+    if type(hexvals) == str:
+        hexvals = hexvals.split()
+    return ' '.join(map(toHex,hexvals))
+
+
 def switch_endian(byte):
     if type(byte) == str:
         byte = byte.split()
@@ -47,7 +62,10 @@ def toInt(s):
     return int(s.replace(' ',''),16)
 
 def toHex(i):
-    return hex(i).replace('0x','').upper()
+    a = hex(i).replace('0x','').upper()
+    if len(a) == 1:
+        a = '0'+a
+    return a
 
 def reverse(s):
     return ''.join(reversed(s)) 
@@ -123,23 +141,28 @@ def getstatus():
     return status
 
 def deletesample(number):
+    '''removes sample number _number_ from sampler memory'''
     lst =  ['F0 47 00 14 48',numberstring(number), 'F7']
     send(' '.join(lst))
     print(' '.join(lst))
 
 def deleteprogram(number):
+    '''removes program number _number_ from sampler memory'''
     lst =  ['F0 47 00 12 48',numberstring(number), 'F7']
     send(' '.join(lst))
 
 def renamesample(number,name):
+    '''renames a sample to name'''
     lst = ['F0 47 00 2C 48',numberstring(number),'03 00 0C 00', str_to_akai(name), 'F7']
     send(' '.join(lst))
 
 def renameprogram(number,name):
+    '''renames a program to name'''
     lst = ['F0 47 00 28 48', numberstring(number),'03 00 0C 00', str_to_akai(name), 'F7']
     send(' '.join(lst))
 
 def handlefile(path,number):
+    '''sends file path to the sampler via midi sample dump and renames it to the file name'''
     d,f = os.path.split(path)
     filename, ext = os.path.splitext(f)
     lst = []
@@ -160,6 +183,7 @@ def handlefile(path,number):
     time.sleep(1)
 
 def dump_plist():
+    '''print list of programs in memory'''
     data = request('F0 47 00 02 48 F7').split()#format: f0,47,cc,PLIST,48,pp,pp, NAMES, f7
     num = int(data[5],16) #number of resident programs
     index = 7 #ab dem 8ten byte kommen die namen
@@ -168,6 +192,7 @@ def dump_plist():
         index = index+12
 
 def dump_slist():
+    '''print list of samples in memory'''
     data = request('F0 47 00 04 48 F7').split()#format: f0,47,cc,PLIST,48,pp,pp, NAMES, f7
     num = int(data[5],16) #number of resident programs
     index = 7 #ab dem 8ten byte kommen die namen
@@ -176,6 +201,7 @@ def dump_slist():
         index = index+12
    
 def sampleinfo(number):
+    '''returns info about sample number number'''
     data = request('F0 47 00 0A 48 '+numberstring(number)+' F7').split()
     data = data[5:-1] # strip sysex header and eox
     data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
@@ -211,6 +237,7 @@ def sampleinfo(number):
     return data,sample
 
 def programinfo(number):
+    '''returns info about program number number'''
     data = request('F0 47 00 06 48 '+numberstring(number)+' F7').split()
     data2 = list(data)
     data = data[5:-1] # strip sysex header and eox
@@ -240,15 +267,17 @@ def filter(number,value):
     value = convert_bytes([toHex(value)])
     n = convert_bytes([toHex(number)])
     s = s % (n,value)
-    send(s)
+    #send(s)
+    return s
 
 def resonance(number,value):
     '''set filter resonance for a program. range -50..50'''
-    s = 'F0 47 00 2A 48 %s 00 15 01 02 00 0%s 00 02 03 F7' #erstes %: program number, zweites: filter value
+    s = 'F0 47 00 2A 48 %s 00 15 01 02 00 %s 00 02 03 F7' #erstes %: program number, zweites: filter value
     value = toHex(value)
     n = convert_bytes([toHex(number)])
     s = s % (n,value)
     send(s)
+    return s
 
 ################
 
