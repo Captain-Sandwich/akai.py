@@ -184,8 +184,6 @@ def handlefile(path,number):
     name = ''.join(lst)
     print(('converting',f))
     sp.call(['sox',path,'-t','.sds','-r','44100','-b','16','-D','-c','1',filename+'.sds'])
-    #sp.call(['2sds',filename])
-    #sp.call(['sendsds',filename[:-4]+'.sds'])
     print(('sending',filename+'.sds','over sysex'))
     sp.call(['amidi','-p','hw:1,0,0','-s',filename+'.sds'])
     time.sleep(1)
@@ -218,7 +216,6 @@ def sampleinfo(number):
     data = data[5:-1] # strip sysex header and eox
     data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
     sample = {}
-    #try:
     sample['number'] = int(data[0],16)
     sample['pitch'] = num_to_pitch( toInt(data[3]) )
     if toInt(data[2]) == 1:
@@ -244,47 +241,7 @@ def sampleinfo(number):
         sample['loop'+str(i)+'_start'] = toInt(data[41+offset]+data[40+offset]+data[39+offset])
         sample['loop'+str(i)+'_length'] = toInt(data[47+offset]+data[46+offset]+data[45+offset])
         sample['loop'+str(i)+'_time'] = toInt(data[50+offset]+data[49+offset])
-   # except:
-    #    print('Sample',number,'does not exist')
     return data,sample
-
-def sampleinfo_raw(number):
-    '''returns info about sample number number'''
-    data = request('F0 47 00 0A 48 '+numberstring(number)+' F7').split()
-    raw = list(data)
-    data = data[5:-1] # strip sysex header and eox
-    data = convert_nibbles(data) # ein paar = ein byte daten, schon umgedreht,
-    sample = {}
-    #try:
-    sample['number'] = int(data[0],16)
-    sample['pitch'] = num_to_pitch( toInt(data[3]) )
-    if toInt(data[2]) == 1:
-        sample['samplerate'] = 44100
-    else:
-        sample['samplerate'] = 22050
-    sample['name'] = akai_to_str(data[4:16])
-    sample['loops'] = toInt(data[17])
-    sample['start'] = toInt(switch_endian(data[31:34]))
-    sample['end'] = toInt(switch_endian(data[35:38]))
-    if toInt(data[20]) == 0:
-        sample['loop_mode'] = 'lp in release'
-    elif toInt(data[20]) == 1:
-        sample['loop_mode'] = 'lp to release'
-    elif toInt(data[20]) == 2:
-        sample['loop_mode'] = 'no looping'
-    elif toInt(data[20]) == 3:
-        sample['loop_mode'] = 'one-shot'
-    sample['detune'] = str(signed_int(data[22]))+'.'+str(signed_int(data[21])) #cent detune geht noch nicht TODO
-    for i in range(sample['loops']):
-        offset = (i)*12
-        i = i+1
-        sample['loop'+str(i)+'_start'] = toInt(data[41+offset]+data[40+offset]+data[39+offset])
-        sample['loop'+str(i)+'_length'] = toInt(data[47+offset]+data[46+offset]+data[45+offset])
-        sample['loop'+str(i)+'_time'] = toInt(data[50+offset]+data[49+offset])
-   # except:
-    #    print('Sample',number,'does not exist')
-    return data,sample,raw
-
 
 def programinfo(number):
     '''returns info about program number number'''
@@ -311,7 +268,7 @@ def programinfo(number):
 #####################
 #   Program Functions
 #####################
-def filter(number,value):
+def cutoff(number,value):
     '''set filter value for a program. range 0..99'''
     s = 'F0 47 00 2A 48 %s 00 07 00 01 00 %s F7' #erstes %: program number, zweites: filter value
     value = convert_bytes([toHex(value)])
