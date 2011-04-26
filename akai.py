@@ -268,22 +268,24 @@ def programinfo(number):
 #####################
 #   Program Functions
 #####################
-def cutoff(number,value):
+def cutoff(number,value,_send=False):
     '''set filter value for a program. range 0..99'''
     s = 'F0 47 00 2A 48 %s 00 07 00 01 00 %s F7' #erstes %: program number, zweites: filter value
-    value = convert_bytes([toHex(value)])
-    n = convert_bytes([toHex(number)])
+    value = ' '.join(convert_bytes([toHex(value)]))
+    n = ' '.join(convert_bytes([toHex(number)]))
     s = s % (n,value)
-    #send(s)
+    if _send:
+        send(s)
     return s
 
-def resonance(number,value):
+def resonance(number,value,_send=False):
     '''set filter resonance for a program. range -50..50'''
     s = 'F0 47 00 2A 48 %s 00 15 01 02 00 %s 00 02 03 F7' #erstes %: program number, zweites: filter value
     value = toHex(value)
-    n = convert_bytes([toHex(number)])
+    n = ' '.join(convert_bytes([toHex(number)]))
     s = s % (n,value)
-    send(s)
+    if _send:
+        send(s)
     return s
 
 #####################
